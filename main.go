@@ -52,43 +52,6 @@ func Nodes(client *kubernetes.Clientset, excludes map[string]bool) {
 				}(K8sNode)
 
 			},
-			// UpdateFunc: func(old, new interface{}) {
-			// 	log.Println("Running Update Function")
-			// 	oldNode := new.(*v1.Node)
-			// 	K8sNode := new.(*v1.Node)
-			// 	if oldNode.ResourceVersion == K8sNode.ResourceVersion {
-			// 		// Periodic resync will send update events for all known Deployments.
-			// 		// Two different versions of the same Deployment will always have different RVs.
-			// 		//debug
-			// 		log.Println("Same resource version. Returning")
-			// 		return
-			// 	}
-
-			// 	node := node.Node{
-			// 		Name:       K8sNode.ObjectMeta.Name,
-			// 		ExternalID: K8sNode.Spec.ExternalID,
-			// 		Excludes:   excludes,
-			// 	}
-
-			// 	go func(K8sNode *v1.Node) {
-			// 		// add the tags on to the node struct
-			// 		node.ListTags()
-			// 		origTagLen := len(K8sNode.GetLabels())
-			// 		// apply the tags to labels on the k8s node
-			// 		K8sNode = node.AddLabels(K8sNode)
-			// 		if origTagLen == len(K8sNode.GetLabels()) {
-			// 			log.Println("Not Updating", node.Name, "No changes to apply")
-			// 		} else {
-			// 			log.Println("Applying new labels to", node.Name)
-			// 			// update the actual node
-			// 			_, err := client.CoreV1().Nodes().Update(K8sNode)
-			// 			if err != nil {
-			// 				log.Println("Error updating node", err)
-			// 			}
-			// 		}
-			// 	}(K8sNode)
-
-			// },
 		},
 	)
 	stop := make(chan struct{})
