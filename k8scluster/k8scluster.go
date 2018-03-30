@@ -23,7 +23,7 @@ type Node struct {
 
 // Watcher - starts the watcher for nodes joining the cluster
 // and triggers the adding of labels on new node connection
-func (n *Node) Watcher(client *kubernetes.Clientset, appConfig configReader.Config) {
+func Watcher(client *kubernetes.Clientset, appConfig configReader.Config) {
 
 	watchlist := cache.NewListWatchFromClient(client.Core().RESTClient(), "nodes", v1.NamespaceAll,
 		fields.Everything())
@@ -36,11 +36,11 @@ func (n *Node) Watcher(client *kubernetes.Clientset, appConfig configReader.Conf
 				log.Println("Running Add Function")
 				K8sNode := obj.(*v1.Node)
 
-				n.Name = K8sNode.ObjectMeta.Name
-				n.ExternalID = K8sNode.Spec.ExternalID
-				n.Excludes = appConfig.Excludes
-
 				go func(K8sNode *v1.Node) {
+					n := Node{}
+					n.Name = K8sNode.ObjectMeta.Name
+					n.ExternalID = K8sNode.Spec.ExternalID
+					n.Excludes = appConfig.Excludes
 					// add the tags on to the node struct
 					n.ProviderTags()
 

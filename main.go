@@ -45,8 +45,5 @@ func main() {
 	}
 
 	// Start node watcher
-	n := k8scluster.Node{}
-	// TODO: this is using the same node data over and over.
-	// Need to fix this.
-	n.Watcher(clientset, appConfig)
+	k8scluster.Watcher(clientset, appConfig)
 }
