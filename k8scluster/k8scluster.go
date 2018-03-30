@@ -1,10 +1,11 @@
-package node
+package k8scluster
 
 import (
-	"fmt"
 	"log"
 	"time"
 
+	"github.com/cenkalti/backoff"
+	"github.com/jpweber/labeler/configReader"
 	"github.com/jpweber/labeler/provider"
 	"k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +23,7 @@ type Node struct {
 
 // Watcher - starts the watcher for nodes joining the cluster
 // and triggers the adding of labels on new node connection
-func (n *Node) Watcher(client *kubernetes.Clientset, excludes map[string]bool) {
+func (n *Node) Watcher(client *kubernetes.Clientset, appConfig configReader.Config) {
 
 	watchlist := cache.NewListWatchFromClient(client.Core().RESTClient(), "nodes", v1.NamespaceAll,
 		fields.Everything())
@@ -37,23 +38,25 @@ func (n *Node) Watcher(client *kubernetes.Clientset, excludes map[string]bool) {
 
 				n.Name = K8sNode.ObjectMeta.Name
 				n.ExternalID = K8sNode.Spec.ExternalID
-				n.Excludes = excludes
+				n.Excludes = appConfig.Excludes
 
 				go func(K8sNode *v1.Node) {
 					// add the tags on to the node struct
 					n.ProviderTags()
 
 					// apply the tags to labels on the k8s node
-					K8sNode = n.GenNewLabelSet(K8sNode)
-					// log.Println("Applying new labels to", n.Name)
-					// // update the actual node
-					// _, err := client.CoreV1().Nodes().Update(K8sNode)
-					// if err != nil {
-					// 	log.Println("Error updating node", err)
-					// 	updatedNode, _ := client.CoreV1().Nodes().Get(K8sNode.Name, meta_v1.GetOptions{})
-					// 	log.Println(updatedNode)
-					// }
-					ApplyLabels(client, K8sNode)
+					K8sNode = n.GenNewLabelSet(K8sNode, appConfig)
+					b := backoff.NewExponentialBackOff()
+					b.MaxElapsedTime = 2 * time.Minute
+					op := func() error {
+						ret := ApplyLabels(client, K8sNode)
+						return ret
+					}
+					err := backoff.Retry(op, b)
+					if err != nil {
+						log.Fatalf("error after retrying: %v", err)
+					}
+					// ApplyLabels(client, K8sNode)
 				}(K8sNode)
 
 			},
@@ -68,13 +71,14 @@ func (n *Node) Watcher(client *kubernetes.Clientset, excludes map[string]bool) {
 
 func (n *Node) ProviderTags() {
 	n.Tags = provider.EC2Tags(n.ExternalID)
+	// TODO:
+	log.Println("provider tags:", n.Tags)
 	// as we add different cloud providrers
 	// create a swtich statement to fetch from different sources
 }
 
-func (n *Node) GenNewLabelSet(K8sNode *v1.Node) *v1.Node {
+func (n *Node) GenNewLabelSet(K8sNode *v1.Node, appConfig configReader.Config) *v1.Node {
 	newlabels := make(map[string]string)
-
 	// filter out any explicitly ecluded labels
 	for k, v := range n.Tags {
 		if n.Excludes[k] != true {
@@ -84,11 +88,10 @@ func (n *Node) GenNewLabelSet(K8sNode *v1.Node) *v1.Node {
 
 	// fetch existing node labels
 	labels := K8sNode.GetLabels()
-	objMeta := K8sNode.GetResourceVersion()
-	fmt.Println(objMeta)
 	// add the new labels
 	for k, v := range newlabels {
-		labels[k] = v
+		log.Println("New Label:", appConfig.Namespace+"/"+k)
+		labels[appConfig.Namespace+"/"+k] = v
 	}
 
 	K8sNode.SetLabels(labels)
@@ -96,13 +99,19 @@ func (n *Node) GenNewLabelSet(K8sNode *v1.Node) *v1.Node {
 	return K8sNode
 }
 
-func ApplyLabels(client *kubernetes.Clientset, K8sNode *v1.Node) {
+func ApplyLabels(client *kubernetes.Clientset, K8sNode *v1.Node) error {
 	log.Println("Applying new labels to", K8sNode.ObjectMeta.Name)
-	// update the actual node
-	_, err := client.CoreV1().Nodes().Update(K8sNode)
+	// Always update the k8s node to the current revision of said node.
+	currentNode, _ := client.CoreV1().Nodes().Get(K8sNode.Name, meta_v1.GetOptions{})
+
+	// Get the labels from our original revision of the K8S node and apply them to the current
+	// revision of the K8s node and update the node
+	currentNode.SetLabels(K8sNode.GetLabels())
+	_, err := client.CoreV1().Nodes().Update(currentNode)
 	if err != nil {
 		log.Println("Error updating node", err)
-		updatedNode, _ := client.CoreV1().Nodes().Get(K8sNode.Name, meta_v1.GetOptions{})
-		ApplyLabels(client, updatedNode)
+		return err
 	}
+
+	return nil
 }

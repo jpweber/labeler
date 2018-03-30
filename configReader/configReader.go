@@ -1,4 +1,4 @@
-package config
+package configReader
 
 import (
 	"io/ioutil"
@@ -10,11 +10,11 @@ import (
 
 type Config struct {
 	Excludes  map[string]bool `yaml:"excludes"`
-	namespace string
+	Namespace string
 }
 
-// ReadConfig reads info from config file
-func ReadConfig(configFile string) Config {
+// Read reads info from config file
+func Read(configFile string) Config {
 	_, err := os.Stat(configFile)
 	if err != nil {
 		log.Fatal("Config file is missing: ", configFile)

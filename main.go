@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jpweber/labeler/config"
-	"github.com/jpweber/labeler/node"
+	"github.com/jpweber/labeler/configReader"
+	"github.com/jpweber/labeler/k8scluster"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -18,7 +18,7 @@ func homeDir() string {
 func main() {
 
 	configPath := "config.yaml"
-	appConfig := config.ReadConfig(configPath)
+	appConfig := configReader.Read(configPath)
 
 	var kubeconfig *string
 	// var namespace *string
@@ -45,6 +45,8 @@ func main() {
 	}
 
 	// Start node watcher
-	n := node.Node{}
-	n.Watcher(clientset, appConfig.Excludes)
+	n := k8scluster.Node{}
+	// TODO: this is using the same node data over and over.
+	// Need to fix this.
+	n.Watcher(clientset, appConfig)
 }
