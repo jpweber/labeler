@@ -1,0 +1,13 @@
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: labeler
+data:
+  config.yaml: |-
+    ---
+    excludes:
+      Name: true
+      aws:autoscaling:groupName: true
+      kubernetes.io/cluster/jpw : true
+    namespace: labeler.io

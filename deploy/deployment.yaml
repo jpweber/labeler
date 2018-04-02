@@ -1,0 +1,67 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:serviceaccount:labeler
+rules:
+- apiGroups:
+  - "*"
+  resources:
+  - "nodes"
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system:serviceaccount:labeler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:serviceaccount:labeler
+subjects:
+- kind: ServiceAccount
+  name: labeler
+  namespace: kube-system
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: labeler
+  namespace: kube-system
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: labeler
+  namespace: kube-system
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: labeler
+    spec:
+      serviceAccountName: labeler
+      containers:
+      - name: labeler
+        image: jpweber/labeler:0.3.0
+        resources:
+            requests:
+                memory: "256Mi"
+                cpu: "1000m"
+            limits:
+                memory: "512Mi"
+                cpu: "1500m"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/labeler
+      volumes:
+      - name: config-volume
+        configMap:
+          name: labeler

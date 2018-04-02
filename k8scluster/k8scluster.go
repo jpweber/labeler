@@ -1,12 +1,12 @@
 package k8scluster
 
 import (
-	"log"
 	"time"
 
 	"github.com/cenkalti/backoff"
 	"github.com/jpweber/labeler/configReader"
 	"github.com/jpweber/labeler/provider"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -30,10 +30,10 @@ func Watcher(client *kubernetes.Clientset, appConfig configReader.Config) {
 	_, controller := cache.NewInformer(
 		watchlist,
 		&v1.Node{},
-		time.Second*600,
+		time.Second*300,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				log.Println("Running Add Function")
+				log.Println("Observed new node being added to cluster")
 				K8sNode := obj.(*v1.Node)
 
 				go func(K8sNode *v1.Node) {
@@ -44,8 +44,16 @@ func Watcher(client *kubernetes.Clientset, appConfig configReader.Config) {
 					// add the tags on to the node struct
 					n.ProviderTags()
 
+					// filter out any tags we do not want added as labels
+					newLabels := n.filterExcludes()
+					if len(newLabels) <= 0 {
+						log.Printf("No new labels to apply on node %s", K8sNode.Name)
+						return
+					}
+
 					// apply the tags to labels on the k8s node
-					K8sNode = n.GenNewLabelSet(K8sNode, appConfig)
+					K8sNode = n.GenNewLabelSet(K8sNode, appConfig, newLabels)
+
 					b := backoff.NewExponentialBackOff()
 					b.MaxElapsedTime = 2 * time.Minute
 					op := func() error {
@@ -54,7 +62,7 @@ func Watcher(client *kubernetes.Clientset, appConfig configReader.Config) {
 					}
 					err := backoff.Retry(op, b)
 					if err != nil {
-						log.Fatalf("error after retrying: %v", err)
+						log.Printf("error after retrying: %v", err)
 					}
 					// ApplyLabels(client, K8sNode)
 				}(K8sNode)
@@ -71,13 +79,11 @@ func Watcher(client *kubernetes.Clientset, appConfig configReader.Config) {
 
 func (n *Node) ProviderTags() {
 	n.Tags = provider.EC2Tags(n.ExternalID)
-	// TODO:
-	log.Println("provider tags:", n.Tags)
 	// as we add different cloud providrers
 	// create a swtich statement to fetch from different sources
 }
 
-func (n *Node) GenNewLabelSet(K8sNode *v1.Node, appConfig configReader.Config) *v1.Node {
+func (n *Node) filterExcludes() map[string]string {
 	newlabels := make(map[string]string)
 	// filter out any explicitly ecluded labels
 	for k, v := range n.Tags {
@@ -86,11 +92,15 @@ func (n *Node) GenNewLabelSet(K8sNode *v1.Node, appConfig configReader.Config) *
 		}
 	}
 
+	return newlabels
+}
+
+func (n *Node) GenNewLabelSet(K8sNode *v1.Node, appConfig configReader.Config, newLabels map[string]string) *v1.Node {
+
 	// fetch existing node labels
 	labels := K8sNode.GetLabels()
 	// add the new labels
-	for k, v := range newlabels {
-		log.Println("New Label:", appConfig.Namespace+"/"+k)
+	for k, v := range newLabels {
 		labels[appConfig.Namespace+"/"+k] = v
 	}
 
