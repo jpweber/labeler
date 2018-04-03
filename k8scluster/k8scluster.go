@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+// Node struct for a kubernetes cluster node
 type Node struct {
 	Name       string
 	ExternalID string
@@ -37,12 +38,15 @@ func Watcher(client *kubernetes.Clientset, appConfig configReader.Config) {
 				K8sNode := obj.(*v1.Node)
 
 				go func(K8sNode *v1.Node) {
-					n := Node{}
-					n.Name = K8sNode.ObjectMeta.Name
-					n.ExternalID = K8sNode.Spec.ExternalID
-					n.Excludes = appConfig.Excludes
+
+					n := Node{
+						Name:       K8sNode.ObjectMeta.Name,
+						ExternalID: K8sNode.Spec.ExternalID,
+						Excludes:   appConfig.Excludes,
+					}
+
 					// add the tags on to the node struct
-					n.ProviderTags()
+					n.ProviderTags(&appConfig)
 
 					// filter out any tags we do not want added as labels
 					newLabels := n.filterExcludes()
@@ -77,10 +81,14 @@ func Watcher(client *kubernetes.Clientset, appConfig configReader.Config) {
 	<-done
 }
 
-func (n *Node) ProviderTags() {
-	n.Tags = provider.EC2Tags(n.ExternalID)
-	// as we add different cloud providrers
-	// create a swtich statement to fetch from different sources
+// ProviderTags - Get the tags attached to an instance from a cloud provider
+func (n *Node) ProviderTags(appConfig *configReader.Config) {
+
+	// call provider specific functions for getting labels or tags
+	switch appConfig.Provider {
+	case "aws":
+		n.Tags = provider.EC2Tags(n.ExternalID, appConfig)
+	}
 }
 
 func (n *Node) filterExcludes() map[string]string {
@@ -95,6 +103,7 @@ func (n *Node) filterExcludes() map[string]string {
 	return newlabels
 }
 
+// GenNewLabelSet - generate new set of labels to be applied to a k8s node.
 func (n *Node) GenNewLabelSet(K8sNode *v1.Node, appConfig configReader.Config, newLabels map[string]string) *v1.Node {
 
 	// fetch existing node labels
@@ -109,6 +118,7 @@ func (n *Node) GenNewLabelSet(K8sNode *v1.Node, appConfig configReader.Config, n
 	return K8sNode
 }
 
+// ApplyLabels - apply new labels to a k8s node
 func ApplyLabels(client *kubernetes.Clientset, K8sNode *v1.Node) error {
 	log.Println("Applying new labels to", K8sNode.ObjectMeta.Name)
 	// Always update the k8s node to the current revision of said node.

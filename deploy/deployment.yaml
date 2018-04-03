@@ -50,7 +50,7 @@ spec:
       serviceAccountName: labeler
       containers:
       - name: labeler
-        image: jpweber/labeler:0.3.0
+        image: jpweber/labeler:0.4.0
         resources:
             requests:
                 memory: "256Mi"

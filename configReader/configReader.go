@@ -10,7 +10,9 @@ import (
 
 type Config struct {
 	Excludes  map[string]bool `yaml:"excludes"`
-	Namespace string
+	Namespace string          `yaml:"namespace"`
+	Region    string          `yaml:"region"`
+	Provider  string          `yaml:"provider"`
 }
 
 // Read reads info from config file

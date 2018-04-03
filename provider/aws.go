@@ -7,11 +7,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/jpweber/labeler/configReader"
 )
 
-func EC2Tags(instanceID string) map[string]string {
+func EC2Tags(instanceID string, appConfig *configReader.Config) map[string]string {
 	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("us-east-2")},
+		Region: aws.String(appConfig.Region)},
 	)
 
 	svc := ec2.New(sess)

@@ -6,8 +6,10 @@ metadata:
 data:
   config.yaml: |-
     ---
+    namespace: labeler.io
+    region: us-east-2
+    provider: aws
     excludes:
       Name: true
       aws:autoscaling:groupName: true
       kubernetes.io/cluster/jpw : true
-    namespace: labeler.io
