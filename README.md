@@ -11,6 +11,9 @@ Deploy to cluster:
 Remove from cluster:  
 `kubectl delete -f deploy/`
 
+View output logs:  
+`kubectl logs deployment/labeler -n kube-system`
+
 ## Configuration
 The configuration is a yaml formatted file that is saved as a config map and then read in at deploy time. Below is an exmaple configuration file
 
@@ -30,10 +33,7 @@ excludes:
 
 `provider` - the name of your cloud provider. (aws, gcp, azure)  
 
-`excludes` - tags that may be applied to an instance that you wish to exclude from being applied as labels.  In the example some common starter values are provided
+`excludes` - tags that may be applied to an instance that you wish to exclude from being applied as labels.  In the example some common starter values are provided. 
 
-## Troubleshooting
-
-## Contributing
 
 
