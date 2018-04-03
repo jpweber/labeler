@@ -1,6 +1,0 @@
----
-excludes:
-  Name: true
-  aws:autoscaling:groupName: true
-  kubernetes.io/cluster/jpw : true
-namespace: labeler.io

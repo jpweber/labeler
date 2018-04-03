@@ -53,11 +53,11 @@ spec:
         image: jpweber/labeler:0.4.0
         resources:
             requests:
-                memory: "256Mi"
-                cpu: "1000m"
+                memory: "16Mi"
+                cpu: "100m"
             limits:
-                memory: "512Mi"
-                cpu: "1500m"
+                memory: "32Mi"
+                cpu: "200m"
         volumeMounts:
         - name: config-volume
           mountPath: /etc/labeler

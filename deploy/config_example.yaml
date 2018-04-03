@@ -3,6 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: labeler
+  namespace: kube-system
 data:
   config.yaml: |-
     ---
